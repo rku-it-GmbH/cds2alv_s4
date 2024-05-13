@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_NROB" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <ATTRIBUTES>
+    <OBJECT>ZCDS_ALV_N</OBJECT>
+    <DOMLEN>ZCDS_ALV_VIEW_PROG_COUNTER</DOMLEN>
+    <PERCENTAGE>5.0</PERCENTAGE>
+    <BUFFER>X</BUFFER>
+    <NOIVBUFFER>00000010</NOIVBUFFER>
+    <UNAME>S000_002</UNAME>
+    <UDATE>2024-02-28</UDATE>
+    <UTIME>14:11:12</UTIME>
+   </ATTRIBUTES>
+   <TEXT>
+    <LANGU>E</LANGU>
+    <OBJECT>ZCDS_ALV_N</OBJECT>
+    <TXT>Number Range for generated Reports</TXT>
+    <TXTSHORT>Report Number</TXTSHORT>
+   </TEXT>
+  </asx:values>
+ </asx:abap>
+</abapGit>
