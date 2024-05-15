@@ -112,7 +112,7 @@ CLASS ZCL_CDS_ALV_REPORT_STRATEGY IMPLEMENTATION.
             param_properties-label = remove_quotes( <param_annotation>-value ).
         ENDCASE.
 
-        IF <param_annotation>-annoname CP 'CONSUMPTION.VALUEHELPDEFINITION.*'.
+        IF <param_annotation>-annoname CP 'CONSUMPTION.VALUEHELPDEFINITION$*$.*'.
           param_properties-value_help = abap_true.
         ENDIF.
       ENDLOOP.
