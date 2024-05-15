@@ -62,7 +62,10 @@ CLASS zcl_cds_alv_grid_builder DEFINITION PUBLIC CREATE PUBLIC INHERITING FROM z
     METHODS build_layout.
     METHODS build_f4.
     METHODS build_exclude_functions.
-    METHODS build_event_handler.
+
+    METHODS build_event_handler
+      RAISING zcx_cds_alv_message.
+
     METHODS register_event_handlers.
 
   PRIVATE SECTION.
@@ -79,31 +82,29 @@ CLASS zcl_cds_alv_grid_builder DEFINITION PUBLIC CREATE PUBLIC INHERITING FROM z
     DATA delete_enabled TYPE xsdboolean.
 
     METHODS sort_columns.
-
 ENDCLASS.
 
 
-
-CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
-
-
+CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
   METHOD build_event_handler.
-    DATA(event_handler) = NEW zcl_cds_alv_grid_event_handler( i_cds_view              = cds_view
-                                                              i_alv_grid              = alv_grid
-                                                              i_selection             = selection
-                                                              i_value_help            = value_help
-                                                              i_navigation            = navigation
-                                                              i_bopf_handler          = bopf_handler
-                                                              i_table_container       = table_container
-                                                              i_selection_screen      = selection_screen
-                                                              i_alternative_selection = alternative_selection
-                                                              i_field_actions         = field_actions
-                                                              i_update_enabled        = update_enabled
-                                                              i_delete_enabled        = delete_enabled
-                                                              i_editable_fields       = editable_fields ).
+    DATA(program_info) = persistence->get_report_for_cds_view( cds_view ).
+    DATA(functions_display_mode) = program_info-add_func_display_mode.
+    DATA(event_handler) = NEW zcl_cds_alv_grid_event_handler( i_cds_view               = cds_view
+                                                              i_alv_grid               = alv_grid
+                                                              i_selection              = selection
+                                                              i_value_help             = value_help
+                                                              i_navigation             = navigation
+                                                              i_bopf_handler           = bopf_handler
+                                                              i_table_container        = table_container
+                                                              i_selection_screen       = selection_screen
+                                                              i_alternative_selection  = alternative_selection
+                                                              i_field_actions          = field_actions
+                                                              i_update_enabled         = update_enabled
+                                                              i_delete_enabled         = delete_enabled
+                                                              i_editable_fields        = editable_fields
+                                                              i_functions_display_mode = functions_display_mode ).
     INSERT event_handler INTO TABLE event_handlers.
   ENDMETHOD.
-
 
   METHOD build_exclude_functions.
     exclude_functions = VALUE #( ( cl_gui_alv_grid=>mc_fc_loc_append_row )
@@ -118,28 +119,23 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
                                  ( cl_gui_alv_grid=>mc_fc_loc_undo ) ).
   ENDMETHOD.
 
-
   METHOD build_f4.
     value_help_fields = VALUE #( FOR field_properties IN field_properties_table
                                  WHERE
-                                 ( has_value_help = abap_true )
+                                       ( has_value_help = abap_true )
                                  ( fieldname  = field_properties-fieldname
                                    register   = abap_true
                                    getbefore  = abap_true
                                    chngeafter = abap_true ) ).
   ENDMETHOD.
 
-
   METHOD build_fieldcatalog.
     CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
-      EXPORTING
-        i_structure_name       = cds_view
-      CHANGING
-        ct_fieldcat            = fieldcatalog
-      EXCEPTIONS
-        inconsistent_interface = 1
-        program_error          = 2
-        OTHERS                 = 3.
+      EXPORTING  i_structure_name       = cds_view
+      CHANGING   ct_fieldcat            = fieldcatalog
+      EXCEPTIONS inconsistent_interface = 1
+                 program_error          = 2
+                 OTHERS                 = 3.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE zcx_cds_alv_message
             MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
@@ -254,7 +250,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     sort_columns( ).
   ENDMETHOD.
 
-
   METHOD build_layout.
     CONSTANTS row_column TYPE lvc_libox VALUE 'A' ##NO_TEXT.
 
@@ -296,7 +291,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     ENDIF.
   ENDMETHOD.
 
-
   METHOD build_variant.
     variant-report   = sy-cprog.
     variant-username = sy-uname.
@@ -306,7 +300,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
                                           IMPORTING e_parameter = variant-variant ).
     ENDIF.
   ENDMETHOD.
-
 
   METHOD constructor.
     super->constructor( i_cds_view    = i_cds_view
@@ -323,7 +316,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
 
     evaluate_annotations( ).
   ENDMETHOD.
-
 
   METHOD evaluate_annotations.
     DATA(action_counter) = VALUE numc3( ).
@@ -415,7 +407,8 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
               field_action-associationname = remove_quotes( ui_annotation-value ).
 
             WHEN 'UI.LINEITEM.DATAACTION'.
-              field_action-data_action = substring_after( val = remove_quotes( ui_annotation-value ) sub = 'BOPF:' ).
+              field_action-data_action = substring_after( val = remove_quotes( ui_annotation-value )
+                                                          sub = 'BOPF:' ).
 
             WHEN 'UI.LINEITEM.LABEL'.
               field_action-label = remove_quotes( ui_annotation-value ).
@@ -453,7 +446,7 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
 
           WHEN '#FOR_INTENT_BASED_NAVIGATION'. " Button
             IF semantic_object IS NOT INITIAL AND field_action-semantic_action IS NOT INITIAL.
-              action_counter = action_counter + 1.
+              action_counter += 1.
               field_action-user_command    = |{ function_code_prefix }{ action_counter }|.
               field_action-semantic_object = semantic_object.
 
@@ -466,7 +459,7 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
 
           WHEN '#WITH_NAVIGATION_PATH'. " Button
             IF field_action-associationname IS NOT INITIAL.
-              action_counter = action_counter + 1.
+              action_counter += 1.
               field_action-user_command = |{ function_code_prefix }{ action_counter }|.
 
               IF field_action-label IS INITIAL.
@@ -478,7 +471,7 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
 
           WHEN '#FOR_ACTION'. " Button
             IF field_action-data_action IS NOT INITIAL.
-              action_counter = action_counter + 1.
+              action_counter += 1.
               field_action-user_command = |{ function_code_prefix }{ action_counter }|.
 
               IF field_action-label IS INITIAL.
@@ -499,8 +492,10 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     ENDLOOP.
 
     " Editable fields
-    update_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.UPDATEENABLED' value = 'true' ] ) ).
-    delete_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.DELETEENABLED' value = 'true' ] ) ).
+    update_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.UPDATEENABLED'
+                                                               value    = 'true' ] ) ).
+    delete_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.DELETEENABLED'
+                                                               value    = 'true' ] ) ).
 
     IF update_enabled = abap_true.
       LOOP AT ddfields ASSIGNING FIELD-SYMBOL(<ddfield>).
@@ -519,7 +514,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
       ENDLOOP.
     ENDIF.
   ENDMETHOD.
-
 
   METHOD register_event_handlers.
     LOOP AT event_handlers INTO DATA(event_handler).
@@ -540,7 +534,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-
   METHOD sort_columns.
     TYPES: BEGIN OF ty_field_position,
              fieldname TYPE fieldname,
@@ -554,9 +547,10 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     DATA(position) = 1.
 
     LOOP AT field_properties_table INTO DATA(field_properties) WHERE position IS NOT INITIAL.
-      INSERT VALUE #( fieldname = field_properties-fieldname position = position )
+      INSERT VALUE #( fieldname = field_properties-fieldname
+                      position  = position )
              INTO TABLE field_positions.
-      position = position + 1.
+      position += 1.
     ENDLOOP.
 
     LOOP AT fieldcatalog ASSIGNING FIELD-SYMBOL(<field>).
@@ -565,11 +559,10 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
           <field>-col_pos = field_position-position.
         CATCH cx_sy_itab_line_not_found.
           <field>-col_pos = position.
-          position = position + 1.
+          position += 1.
       ENDTRY.
     ENDLOOP.
   ENDMETHOD.
-
 
   METHOD zif_cds_alv_grid_builder~create_alv_grid.
     CONSTANTS save_all TYPE char01 VALUE 'A' ##NO_TEXT.
@@ -577,10 +570,8 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     table_container = i_table_container.
 
     CREATE OBJECT alv_grid
-      EXPORTING
-        i_parent = i_container
-      EXCEPTIONS
-        OTHERS   = 1.
+      EXPORTING  i_parent = i_container
+      EXCEPTIONS OTHERS   = 1.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE zcx_cds_alv_message
             MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
@@ -627,11 +618,9 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     e_alv_grid = alv_grid.
   ENDMETHOD.
 
-
   METHOD zif_cds_alv_grid_builder~get_gui_title.
     r_title = description.
   ENDMETHOD.
-
 
   METHOD zif_cds_alv_grid_builder~get_metadata.
     table_container = i_table_container.
@@ -646,7 +635,6 @@ CLASS ZCL_CDS_ALV_GRID_BUILDER IMPLEMENTATION.
     e_sort_order = sort_order.
     e_filters = filter.
   ENDMETHOD.
-
 
   METHOD zif_cds_alv_grid_builder~register_alternative_selection.
     alternative_selection = i_selection_handler.
