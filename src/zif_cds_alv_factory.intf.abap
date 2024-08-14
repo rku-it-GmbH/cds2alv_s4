@@ -8,6 +8,15 @@ INTERFACE zif_cds_alv_factory PUBLIC.
     RETURNING VALUE(r_authority_checker) TYPE REF TO zif_cds_alv_authority_check
     RAISING   zcx_cds_alv_message.
 
+  "! Provides an adapter for calls to the RAP (or BOPF) framework
+  "! @parameter i_cds_view          | The CDS View
+  "! @parameter r_action_handler    | Instance of the action handler class
+  "! @raising   zcx_cds_alv_message | Implementation cannot be instantiated
+  METHODS get_action_handler
+    IMPORTING i_cds_view              TYPE ddstrucobjname
+    RETURNING VALUE(r_action_handler) TYPE REF TO zif_cds_alv_action_handler
+    RAISING   zcx_cds_alv_message.
+
   "! Provides an adapter for calls to the BOPF framework
   "! @parameter i_cds_view          | The CDS View
   "! @parameter r_bopf_handler      | Instance of the BOPF handler class

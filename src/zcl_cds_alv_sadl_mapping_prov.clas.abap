@@ -19,8 +19,7 @@ CLASS zcl_cds_alv_sadl_mapping_prov DEFINITION PUBLIC INHERITING FROM cl_sadl_mp
 ENDCLASS.
 
 
-
-CLASS ZCL_CDS_ALV_SADL_MAPPING_PROV IMPLEMENTATION.
+CLASS zcl_cds_alv_sadl_mapping_prov IMPLEMENTATION.
 
 
   METHOD build_sadl_definition.
@@ -34,16 +33,16 @@ CLASS ZCL_CDS_ALV_SADL_MAPPING_PROV IMPLEMENTATION.
         DATA(entity_type) = entity->get_type( ).
         DATA(id) = convert_id( CONV #( entity_id ) ).
 
-*        " There is a known incompatibility between CDS View with parameters and virtual elements
-*        " Therefore the property 'exposure' is only set when the CDS view has no parameters
-*        entity->get_parameters( IMPORTING et_parameters = DATA(parameters) ).
-*        IF lines( parameters ) = 0.
-*          DATA(exposure) = 'TRUE'.
-*        ENDIF.
+        " There is a known incompatibility between CDS View with parameters and virtual elements
+        " Therefore the property 'exposure' is only set when the CDS view has no parameters
+        entity->get_parameters( IMPORTING et_parameters = DATA(parameters) ).
+        IF lines( parameters ) = 0.
+          DATA(exposure) = 'TRUE'.
+        ENDIF.
 
         " SADL definition according to CL_SADL_ENTITY_UTIL=>GET_SADL_FOR_ENTITY.
         INSERT VALUE #( name = id  type = entity_type  binding = entity_id ) INTO TABLE ms_sadl_definition-data_sources.
-        INSERT VALUE #( name = id  anchor = abap_true  data_source = id  max_edit_mode = 'RO'  id = id ) INTO TABLE ms_sadl_definition-structures.
+        INSERT VALUE #( name = id  anchor = abap_true  data_source = id  max_edit_mode = 'RO'  id = id exposure = exposure ) INTO TABLE ms_sadl_definition-structures.
         INSERT VALUE #( name = 'SADL_QUERY'  structure_id = id  id = 'QUERY' ) INTO TABLE ms_sadl_definition-mapped_queries ASSIGNING FIELD-SYMBOL(<query>).
         DATA(entity_consumption_info) = cl_sadl_entity_factory=>get_instance( )->get_entity_consumption_info( iv_id = entity_id  iv_type = entity_type ).
         entity_consumption_info->get_elements( IMPORTING et_elements = DATA(elements) ).
@@ -67,21 +66,19 @@ CLASS ZCL_CDS_ALV_SADL_MAPPING_PROV IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
-
   METHOD constructor.
     GET TIME STAMP FIELD DATA(timestamp).
     DATA(uuid) = CONV if_sadl_types=>ty_uuid( |ZCDS_ALV:{ i_entity->get_id( ) }| ).
-    super->constructor( iv_uuid = uuid iv_timestamp = timestamp ).
+    super->constructor( iv_uuid      = uuid
+                        iv_timestamp = timestamp ).
     entity = i_entity.
   ENDMETHOD.
-
 
   METHOD convert_id.
     r_name = i_name.
     REPLACE '~' IN r_name WITH '_'.
     REPLACE ALL OCCURRENCES OF '/' IN r_name WITH 'x'.
   ENDMETHOD.
-
 
   METHOD get_sadl_definition.
     IF ms_sadl_definition IS INITIAL.

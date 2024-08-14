@@ -11,6 +11,7 @@ CLASS zcl_cds_alv_grid_builder DEFINITION PUBLIC CREATE PUBLIC INHERITING FROM z
                 i_selection_screen TYPE REF TO zif_cds_alv_selection_screen
                 i_selection        TYPE REF TO zif_cds_alv_selection
                 i_value_help       TYPE REF TO zif_cds_alv_value_help
+                i_action_handler   TYPE REF TO zif_cds_alv_action_handler
                 i_bopf_handler     TYPE REF TO zif_cds_alv_bopf_handler
                 i_navigation       TYPE REF TO zif_cds_alv_navigation
       RAISING   zcx_cds_alv_message.
@@ -33,25 +34,28 @@ CLASS zcl_cds_alv_grid_builder DEFINITION PUBLIC CREATE PUBLIC INHERITING FROM z
            END OF ty_field_properties.
     TYPES ty_field_properties_table TYPE STANDARD TABLE OF ty_field_properties WITH EMPTY KEY.
 
-    DATA field_properties_table TYPE ty_field_properties_table.
-    DATA event_handlers         TYPE zcds_alv_grid_event_handlers.
-    DATA table_container        TYPE REF TO zif_cds_alv_table_container.
-    DATA selection              TYPE REF TO zif_cds_alv_selection.
-    DATA value_help             TYPE REF TO zif_cds_alv_value_help.
-    DATA bopf_handler           TYPE REF TO zif_cds_alv_bopf_handler.
-    DATA navigation             TYPE REF TO zif_cds_alv_navigation.
-    DATA selection_screen       TYPE REF TO zif_cds_alv_selection_screen.
-    DATA alternative_selection  TYPE REF TO zif_cds_alv_select_extension.
-    DATA alv_grid               TYPE REF TO cl_gui_alv_grid.
-    DATA field_actions          TYPE zcds_alv_field_actions.
-    DATA editable_fields        TYPE ddfieldnames.
-    DATA variant                TYPE disvariant.
-    DATA layout                 TYPE lvc_s_layo.
-    DATA exclude_functions      TYPE ui_functions.
-    DATA fieldcatalog           TYPE lvc_t_fcat.
-    DATA sort_order             TYPE lvc_t_sort.
-    DATA filter                 TYPE lvc_t_filt.
-    DATA value_help_fields      TYPE lvc_t_f4.
+    DATA field_properties_table   TYPE ty_field_properties_table.
+    DATA event_handlers           TYPE zcds_alv_grid_event_handlers.
+    DATA table_container          TYPE REF TO zif_cds_alv_table_container.
+    DATA selection                TYPE REF TO zif_cds_alv_selection.
+    DATA value_help               TYPE REF TO zif_cds_alv_value_help.
+    DATA action_handler           TYPE REF TO zif_cds_alv_action_handler.
+    DATA bopf_handler             TYPE REF TO zif_cds_alv_bopf_handler.
+    DATA navigation               TYPE REF TO zif_cds_alv_navigation.
+    DATA selection_screen         TYPE REF TO zif_cds_alv_selection_screen.
+    DATA alternative_selection    TYPE REF TO zif_cds_alv_select_extension.
+    DATA alv_grid                 TYPE REF TO cl_gui_alv_grid.
+    DATA field_actions            TYPE zcds_alv_field_actions.
+    DATA editable_fields          TYPE ddfieldnames.
+    DATA variant                  TYPE disvariant.
+    DATA layout                   TYPE lvc_s_layo.
+    DATA exclude_functions        TYPE ui_functions.
+    DATA fieldcatalog             TYPE lvc_t_fcat.
+    DATA sort_order               TYPE lvc_t_sort.
+    DATA filter                   TYPE lvc_t_filt.
+    DATA value_help_fields        TYPE lvc_t_f4.
+    DATA has_bopf_object          TYPE abap_bool.
+    DATA has_behaviour_definition TYPE abap_bool.
 
     METHODS evaluate_annotations REDEFINITION.
 
@@ -94,11 +98,13 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
                                                               i_selection              = selection
                                                               i_value_help             = value_help
                                                               i_navigation             = navigation
+                                                              i_action_handler         = action_handler
                                                               i_bopf_handler           = bopf_handler
                                                               i_table_container        = table_container
                                                               i_selection_screen       = selection_screen
                                                               i_alternative_selection  = alternative_selection
                                                               i_field_actions          = field_actions
+                                                              i_has_bopf_object        = has_bopf_object
                                                               i_update_enabled         = update_enabled
                                                               i_delete_enabled         = delete_enabled
                                                               i_editable_fields        = editable_fields
@@ -131,11 +137,14 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
 
   METHOD build_fieldcatalog.
     CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
-      EXPORTING  i_structure_name       = cds_view
-      CHANGING   ct_fieldcat            = fieldcatalog
-      EXCEPTIONS inconsistent_interface = 1
-                 program_error          = 2
-                 OTHERS                 = 3.
+      EXPORTING
+        i_structure_name       = cds_view
+      CHANGING
+        ct_fieldcat            = fieldcatalog
+      EXCEPTIONS
+        inconsistent_interface = 1
+        program_error          = 2
+        OTHERS                 = 3.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE zcx_cds_alv_message
             MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
@@ -310,6 +319,7 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
 
     selection = i_selection.
     value_help = i_value_help.
+    action_handler = i_action_handler.
     bopf_handler = i_bopf_handler.
     navigation = i_navigation.
     selection_screen = i_selection_screen.
@@ -407,8 +417,15 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
               field_action-associationname = remove_quotes( ui_annotation-value ).
 
             WHEN 'UI.LINEITEM.DATAACTION'.
-              field_action-data_action = substring_after( val = remove_quotes( ui_annotation-value )
-                                                          sub = 'BOPF:' ).
+              IF ui_annotation-value CS 'BOPF:'.
+                field_action-is_bopf_action = abap_true.
+                field_action-data_action = substring_after( val = remove_quotes( ui_annotation-value )
+                                                            sub = 'BOPF:' ).
+
+              ELSE.
+                field_action-is_bopf_action = abap_false.
+                field_action-data_action = remove_quotes( ui_annotation-value ).
+              ENDIF.
 
             WHEN 'UI.LINEITEM.LABEL'.
               field_action-label = remove_quotes( ui_annotation-value ).
@@ -492,26 +509,43 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
     ENDLOOP.
 
     " Editable fields
-    update_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.UPDATEENABLED'
-                                                               value    = 'true' ] ) ).
-    delete_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.DELETEENABLED'
-                                                               value    = 'true' ] ) ).
+    has_bopf_object = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.TRANSACTIONALPROCESSINGENABLED'
+                                                                value    = 'true' ] ) ).
 
-    IF update_enabled = abap_true.
-      LOOP AT ddfields ASSIGNING FIELD-SYMBOL(<ddfield>).
-        IF line_exists( element_annotations[ elementname = <ddfield>-fieldname
-                                             annoname    = 'OBJECTMODEL.READONLY'
-                                             value       = 'true' ] ).
-          CONTINUE.
-        ENDIF.
+    IF has_bopf_object = abap_true.
+      update_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.UPDATEENABLED'
+                                                                 value    = 'true' ] ) ).
+      delete_enabled = xsdbool( line_exists( entity_annotations[ annoname = 'OBJECTMODEL.DELETEENABLED'
+                                                                 value    = 'true' ] ) ).
 
-        READ TABLE field_properties_table ASSIGNING FIELD-SYMBOL(<field_properties>)
-             WITH KEY fieldname = <ddfield>-fieldname.
-        IF sy-subrc = 0.
-          <field_properties>-is_editable = abap_true.
-          INSERT <ddfield>-fieldname INTO TABLE editable_fields.
-        ENDIF.
-      ENDLOOP.
+      IF update_enabled = abap_true.
+        LOOP AT ddfields ASSIGNING FIELD-SYMBOL(<ddfield>).
+          IF line_exists( element_annotations[ elementname = <ddfield>-fieldname
+                                               annoname    = 'OBJECTMODEL.READONLY'
+                                               value       = 'true' ] ).
+            CONTINUE.
+          ENDIF.
+
+          READ TABLE field_properties_table ASSIGNING FIELD-SYMBOL(<field_properties>)
+               WITH KEY fieldname = <ddfield>-fieldname.
+          IF sy-subrc = 0.
+            <field_properties>-is_editable = abap_true.
+            INSERT <ddfield>-fieldname INTO TABLE editable_fields.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+
+    " RAP Integration
+    IF has_bopf_object = abap_false.
+      ddic_access->get_behaviour_details(
+        EXPORTING
+          i_cds_view        = cds_view
+        IMPORTING
+          e_has_bdef        = has_behaviour_definition
+          e_update_enabled  = update_enabled
+          e_delete_enabled  = delete_enabled
+          e_editable_fields = editable_fields ).
     ENDIF.
   ENDMETHOD.
 
@@ -570,8 +604,10 @@ CLASS zcl_cds_alv_grid_builder IMPLEMENTATION.
     table_container = i_table_container.
 
     CREATE OBJECT alv_grid
-      EXPORTING  i_parent = i_container
-      EXCEPTIONS OTHERS   = 1.
+      EXPORTING
+        i_parent = i_container
+      EXCEPTIONS
+        OTHERS   = 1.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE zcx_cds_alv_message
             MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno

@@ -71,7 +71,7 @@ ENDCLASS.
 
 
 
-CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
+CLASS zcl_cds_alv_factory IMPLEMENTATION.
 
 
   METHOD get_container_for_cds_view.
@@ -89,6 +89,7 @@ CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
           i_interface = 'ZIF_CDS_ALV_VALUE_HELP'         i_class = get_implementation( 'ZIF_CDS_ALV_VALUE_HELP' ) ),
           i_interface = 'ZIF_CDS_ALV_REPORT_CONTROLLER'  i_class = get_implementation( 'ZIF_CDS_ALV_REPORT_CONTROLLER' ) ),
           i_interface = 'ZIF_CDS_ALV_REPORT_STRATEGY'    i_class = get_implementation( 'ZIF_CDS_ALV_REPORT_STRATEGY' ) ),
+          i_interface = 'ZIF_CDS_ALV_ACTION_HANDLER'     i_class = get_implementation( 'ZIF_CDS_ALV_ACTION_HANDLER' ) ),
           i_interface = 'ZIF_CDS_ALV_BOPF_HANDLER'       i_class = get_implementation( 'ZIF_CDS_ALV_BOPF_HANDLER' ) ),
           i_interface = 'ZIF_CDS_ALV_TABLE_CONTAINER'    i_class = get_implementation( 'ZIF_CDS_ALV_TABLE_CONTAINER' ) ).
         INSERT VALUE #( cds_view = i_cds_view ioc_container = r_ioc_container ) INTO TABLE ioc_containers.
@@ -112,6 +113,7 @@ CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
       WHEN 'ZIF_CDS_ALV_VALUE_HELP'         THEN 'ZCL_CDS_ALV_VALUE_HELP'
       WHEN 'ZIF_CDS_ALV_REPORT_CONTROLLER'  THEN 'ZCL_CDS_ALV_REPORT_CONTROLLER'
       WHEN 'ZIF_CDS_ALV_REPORT_STRATEGY'    THEN 'ZCL_CDS_ALV_REPORT_STRATEGY'
+      WHEN 'ZIF_CDS_ALV_ACTION_HANDLER'     THEN 'ZCL_CDS_ALV_ACTION_HANDLER'
       WHEN 'ZIF_CDS_ALV_BOPF_HANDLER'       THEN 'ZCL_CDS_ALV_BOPF_HANDLER'
       WHEN 'ZIF_CDS_ALV_AUTHORITY_CHECK'    THEN 'ZCL_CDS_ALV_AUTHORITY_CHECK'
       WHEN 'ZIF_CDS_ALV_TABLE_CONTAINER'    THEN 'ZCL_CDS_ALV_TABLE_CONTAINER'
@@ -135,6 +137,7 @@ CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
       WHEN 'ZIF_CDS_ALV_VALUE_HELP'         THEN 'ZCL_CDS_ALV_VALUE_HELP'
       WHEN 'ZIF_CDS_ALV_REPORT_CONTROLLER'  THEN 'ZCL_CDS_ALV_REPORT_CONTROLLER'
       WHEN 'ZIF_CDS_ALV_REPORT_STRATEGY'    THEN 'ZCL_CDS_ALV_REPORT_STRATEGY'
+      WHEN 'ZIF_CDS_ALV_ACTION_HANDLER'     THEN 'ZCL_CDS_ALV_ACTION_HANDLER'
       WHEN 'ZIF_CDS_ALV_BOPF_HANDLER'       THEN 'ZCL_CDS_ALV_BOPF_HANDLER'
       WHEN 'ZIF_CDS_ALV_AUTHORITY_CHECK'    THEN 'ZCL_CDS_ALV_AUTHORITY_CHECK'
       WHEN 'ZIF_CDS_ALV_TABLE_CONTAINER'    THEN 'ZCL_CDS_ALV_TABLE_CONTAINER'
@@ -205,6 +208,11 @@ CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
 
   METHOD zif_cds_alv_factory~get_authority_checker.
     r_authority_checker ?= get_parent_container( )->resolve( ).
+  ENDMETHOD.
+
+
+  METHOD zif_cds_alv_factory~get_action_handler.
+    r_action_handler ?= get_container_for_cds_view( i_cds_view )->resolve( ).
   ENDMETHOD.
 
 
@@ -281,4 +289,5 @@ CLASS ZCL_CDS_ALV_FACTORY IMPLEMENTATION.
   METHOD zif_cds_alv_factory~get_value_help.
     r_value_help ?= get_container_for_cds_view( i_cds_view )->resolve( ).
   ENDMETHOD.
+
 ENDCLASS.

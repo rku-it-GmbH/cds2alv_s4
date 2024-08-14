@@ -5,20 +5,23 @@ CLASS zcl_cds_alv_grid_event_handler DEFINITION PUBLIC CREATE PUBLIC.
     CLASS-METHODS class_constructor.
 
     METHODS constructor
-      IMPORTING i_cds_view               TYPE ddstrucobjname
-                i_alv_grid               TYPE REF TO cl_gui_alv_grid
-                i_table_container        TYPE REF TO zif_cds_alv_table_container
-                i_selection              TYPE REF TO zif_cds_alv_selection        OPTIONAL
-                i_value_help             TYPE REF TO zif_cds_alv_value_help       OPTIONAL
-                i_navigation             TYPE REF TO zif_cds_alv_navigation       OPTIONAL
-                i_bopf_handler           TYPE REF TO zif_cds_alv_bopf_handler     OPTIONAL
-                i_selection_screen       TYPE REF TO zif_cds_alv_selection_screen OPTIONAL
-                i_alternative_selection  TYPE REF TO zif_cds_alv_select_extension OPTIONAL
-                i_field_actions          TYPE zcds_alv_field_actions              OPTIONAL
-                i_update_enabled         TYPE abap_bool                           DEFAULT abap_false
-                i_delete_enabled         TYPE abap_bool                           DEFAULT abap_false
-                i_editable_fields        TYPE ddfieldnames                        OPTIONAL
-                i_functions_display_mode TYPE zcds_alv_func_display_mode          OPTIONAL.
+      IMPORTING i_cds_view                 TYPE ddstrucobjname
+                i_alv_grid                 TYPE REF TO cl_gui_alv_grid
+                i_table_container          TYPE REF TO zif_cds_alv_table_container
+                i_selection                TYPE REF TO zif_cds_alv_selection        OPTIONAL
+                i_value_help               TYPE REF TO zif_cds_alv_value_help       OPTIONAL
+                i_navigation               TYPE REF TO zif_cds_alv_navigation       OPTIONAL
+                i_action_handler           TYPE REF TO zif_cds_alv_action_handler   OPTIONAL
+                i_bopf_handler             TYPE REF TO zif_cds_alv_bopf_handler     OPTIONAL
+                i_selection_screen         TYPE REF TO zif_cds_alv_selection_screen OPTIONAL
+                i_alternative_selection    TYPE REF TO zif_cds_alv_select_extension OPTIONAL
+                i_field_actions            TYPE zcds_alv_field_actions              OPTIONAL
+                i_has_bopf_object          TYPE abap_bool                           DEFAULT abap_false
+                i_has_behaviour_definition TYPE abap_bool                           DEFAULT abap_false
+                i_update_enabled           TYPE abap_bool                           DEFAULT abap_false
+                i_delete_enabled           TYPE abap_bool                           DEFAULT abap_false
+                i_editable_fields          TYPE ddfieldnames                        OPTIONAL
+                i_functions_display_mode   TYPE zcds_alv_func_display_mode          OPTIONAL.
 
   PROTECTED SECTION.
     CONSTANTS:
@@ -47,24 +50,27 @@ CLASS zcl_cds_alv_grid_event_handler DEFINITION PUBLIC CREATE PUBLIC.
 
     CLASS-DATA standard_function_codes TYPE ui_functions.
 
-    DATA cds_view               TYPE ddstrucobjname.
-    DATA ref_to_table           TYPE REF TO data.
-    DATA alv_grid               TYPE REF TO cl_gui_alv_grid.
-    DATA selection              TYPE REF TO zif_cds_alv_selection.
-    DATA value_help             TYPE REF TO zif_cds_alv_value_help.
-    DATA navigation             TYPE REF TO zif_cds_alv_navigation.
-    DATA bopf_handler           TYPE REF TO zif_cds_alv_bopf_handler.
-    DATA table_container        TYPE REF TO zif_cds_alv_table_container.
-    DATA selection_screen       TYPE REF TO zif_cds_alv_selection_screen.
-    DATA alternative_selection  TYPE REF TO zif_cds_alv_select_extension.
-    DATA field_actions          TYPE zcds_alv_field_actions.
-    DATA functions              TYPE zcds_alv_functions.
-    DATA standard_functions     TYPE zcds_alv_functions.
-    DATA additional_functions   TYPE zcds_alv_functions.
-    DATA update_enabled         TYPE abap_bool.
-    DATA delete_enabled         TYPE abap_bool.
-    DATA editable_fields        TYPE ddfieldnames.
-    DATA functions_display_mode TYPE zcds_alv_func_display_mode.
+    DATA cds_view                 TYPE ddstrucobjname.
+    DATA ref_to_table             TYPE REF TO data.
+    DATA alv_grid                 TYPE REF TO cl_gui_alv_grid.
+    DATA selection                TYPE REF TO zif_cds_alv_selection.
+    DATA value_help               TYPE REF TO zif_cds_alv_value_help.
+    DATA navigation               TYPE REF TO zif_cds_alv_navigation.
+    DATA action_handler           TYPE REF TO zif_cds_alv_action_handler.
+    DATA bopf_handler             TYPE REF TO zif_cds_alv_bopf_handler.
+    DATA table_container          TYPE REF TO zif_cds_alv_table_container.
+    DATA selection_screen         TYPE REF TO zif_cds_alv_selection_screen.
+    DATA alternative_selection    TYPE REF TO zif_cds_alv_select_extension.
+    DATA field_actions            TYPE zcds_alv_field_actions.
+    DATA functions                TYPE zcds_alv_functions.
+    DATA standard_functions       TYPE zcds_alv_functions.
+    DATA additional_functions     TYPE zcds_alv_functions.
+    DATA update_enabled           TYPE abap_bool.
+    DATA delete_enabled           TYPE abap_bool.
+    DATA editable_fields          TYPE ddfieldnames.
+    DATA functions_display_mode   TYPE zcds_alv_func_display_mode.
+    DATA has_bopf_object          TYPE abap_bool.
+    DATA has_behaviour_definition TYPE abap_bool.
 
     METHODS dispatch_standard_function
       IMPORTING i_function      TYPE ui_func
@@ -167,10 +173,13 @@ CLASS zcl_cds_alv_grid_event_handler IMPLEMENTATION.
     selection = i_selection.
     value_help = i_value_help.
     navigation = i_navigation.
+    action_handler = i_action_handler.
     bopf_handler = i_bopf_handler.
     selection_screen = i_selection_screen.
     table_container = i_table_container.
     field_actions = i_field_actions.
+    has_bopf_object = i_has_bopf_object.
+    has_behaviour_definition = i_has_behaviour_definition.
     update_enabled = i_update_enabled.
     delete_enabled = i_delete_enabled.
     editable_fields = i_editable_fields.
@@ -209,11 +218,21 @@ CLASS zcl_cds_alv_grid_event_handler IMPLEMENTATION.
           ENDIF.
 
         ELSEIF i_field_action-data_action IS NOT INITIAL.
-          IF bopf_handler IS BOUND.
-            bopf_handler->execute_action( EXPORTING i_action        = i_field_action-data_action
-                                                    i_selected_rows = i_selected_rows
-                                          IMPORTING e_refresh_after = refresh_after ).
-          ENDIF.
+          CASE i_field_action-is_bopf_action.
+            WHEN abap_true.
+              IF bopf_handler IS BOUND.
+                bopf_handler->execute_action( EXPORTING i_action        = i_field_action-data_action
+                                                        i_selected_rows = i_selected_rows
+                                              IMPORTING e_refresh_after = refresh_after ).
+              ENDIF.
+
+            WHEN abap_false.
+              IF action_handler IS BOUND.
+                action_handler->execute_action( EXPORTING i_action        = i_field_action-data_action
+                                                          i_selected_rows = i_selected_rows
+                                                IMPORTING e_refresh_after = refresh_after ).
+              ENDIF.
+          ENDCASE.
         ENDIF.
 
         IF refresh_after = abap_true.
@@ -267,14 +286,20 @@ CLASS zcl_cds_alv_grid_event_handler IMPLEMENTATION.
             toggle_change_mode( ).
 
           WHEN standard_function_code-delete.
-            IF bopf_handler IS BOUND.
+            IF has_bopf_object = abap_true AND bopf_handler IS BOUND.
               bopf_handler->delete( i_selected_rows ).
+              refresh( ).
+            ELSEIF has_behaviour_definition = abap_true AND action_handler IS BOUND.
+              action_handler->delete( i_selected_rows  ).
               refresh( ).
             ENDIF.
 
           WHEN standard_function_code-save.
-            IF bopf_handler IS BOUND.
+            IF has_bopf_object = abap_true AND bopf_handler IS BOUND.
               bopf_handler->update( i_selected_rows ).
+              refresh( ).
+            ELSEIF has_behaviour_definition = abap_true AND action_handler IS BOUND.
+              action_handler->update( i_selected_rows  ).
               refresh( ).
             ENDIF.
         ENDCASE.

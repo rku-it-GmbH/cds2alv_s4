@@ -106,4 +106,19 @@ INTERFACE zif_cds_alv_ddic_access PUBLIC.
     IMPORTING i_cds_view           TYPE ddstrucobjname
     RETURNING VALUE(r_modified_at) TYPE timestamp
     RAISING   zcx_cds_alv_message.
+
+  "! <p class="shorttext synchronized">Retrieves behavior metadata</p>
+  "! @parameter i_cds_view          | <p class="shorttext synchronized">the CDS View</p>
+  "! @parameter e_has_bdef          | <p class="shorttext synchronized">Behavior Definition exists</p>
+  "! @parameter e_update_enabled    | <p class="shorttext synchronized">Update enabled</p>
+  "! @parameter e_delete_enabled    | <p class="shorttext synchronized">Delete enabled</p>
+  "! @parameter e_editable_fields   | <p class="shorttext synchronized">Editable fields</p>
+  "! @raising   zcx_cds_alv_message | <p class="shorttext synchronized">Occurs when the CDS View does not exist</p>
+  METHODS get_behaviour_details
+    IMPORTING i_cds_view        TYPE ddstrucobjname
+    EXPORTING e_has_bdef        TYPE abap_bool
+              e_update_enabled  TYPE abap_bool
+              e_delete_enabled  TYPE abap_bool
+              e_editable_fields TYPE ddfieldnames
+    RAISING   zcx_cds_alv_message.
 ENDINTERFACE.
