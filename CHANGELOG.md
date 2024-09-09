@@ -1,3 +1,6 @@
+v 1.3.0
+- Added SET-/GET-Parameter ZCDS_ALV_NO_MAX to allow unrestricted selection as personal default setting.
+
 v 1.2.0
 - Added RAP Action Handler to handle instance actions of a RAP Business Object.
 
